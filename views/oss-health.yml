@@ -1,0 +1,193 @@
+# The realm's answer surface.
+#
+# TWO RULES run through all of it, and both exist because getting them wrong produces a
+# confident wrong answer rather than an error.
+#
+# 1. A CHECK SCORE OF -1 IS NOT ZERO. It means the check could not be evaluated or does not
+#    apply — Packaging on a project that publishes no package, Fuzzing where there is nothing
+#    to fuzz. Averaging it in drags a well-run project down and produces a ranking that is
+#    quietly upside down. Every view here excludes -1 and reports how many it excluded.
+#
+# 2. THE SCORE LIVES ON THE EDGE. Scorecard check names are global — the same fourteen for
+#    every project — so ScorecardCheck is one node per NAME and the per-project score rides on
+#    the HAS_CHECK relationship. Read `r.score`, never `c.score`; the latter does not exist,
+#    and a query that reaches for it gets null for everything.
+#
+# 3. AN UNSCORED PROJECT IS NOT A BAD ONE. deps.dev has not indexed every repository, and a null
+#    overall score sorts to the TOP of a descending ranking — so "we could not assess this" arrives
+#    looking exactly like "this is the worst thing you depend on". Both ranking views exclude nulls
+#    and the `healthCoverage` handler reports them, because the honest place for an unknown is a
+#    coverage report rather than the top of a risk list.
+#
+# Producer values arrive as STRINGS: arithmetic and ORDER BY go through toInteger()/toFloat().
+
+- name: WeakestLinks
+  description: "The projects you depend on, worst-run first — OpenSSF Scorecard overall against how much you said you depend on them. The view to open first. Projects deps.dev has not scored are EXCLUDED rather than ranked worst; healthCoverage reports those."
+  params:
+    limit:
+      type: int
+      default: 30
+      description: "How many projects to return, weakest first."
+  cypher: |
+    MATCH (p:CriticalProject)-[:HAS_HEALTH]->(h:ProjectHealth)
+    WHERE h.overallScore IS NOT NULL
+    RETURN p.name AS project,
+           p.projectKey AS repo,
+           p.criticality AS weDependOn,
+           p.whatWeUseItFor AS usedFor,
+           toFloat(h.overallScore) AS scorecard,
+           CASE WHEN toFloat(h.overallScore) >= 8.0 THEN 'well run'
+                WHEN toFloat(h.overallScore) >= 5.0 THEN 'ordinary'
+                ELSE 'poorly run' END AS verdict,
+           toInteger(h.stars) AS stars,
+           h.license AS licence,
+           substring(coalesce(h.scorecardDate, ''), 0, 10) AS scoredOn,
+           coalesce(p.alternative, '') AS alternative
+    ORDER BY scorecard ASC, weDependOn ASC
+    LIMIT $limit
+
+- name: ExposureRanked
+  description: "Weakest project weighted by how much you depend on it — a badly-run project you barely touch is a curiosity, and one in your hot path is a plan. The ordering to work, rather than raw score. Unscored projects are excluded, not ranked worst."
+  params:
+    limit:
+      type: int
+      default: 30
+      description: "How many projects to return, most exposed first."
+  cypher: |
+    MATCH (p:CriticalProject)-[:HAS_HEALTH]->(h:ProjectHealth)
+    WHERE h.overallScore IS NOT NULL
+    WITH p, h,
+         CASE toLower(coalesce(p.criticality, 'incidental'))
+              WHEN 'critical' THEN 3.0 WHEN 'important' THEN 2.0 ELSE 1.0 END AS dependence,
+         toFloat(h.overallScore) AS score
+    RETURN p.name AS project,
+           p.criticality AS weDependOn,
+           score AS scorecard,
+           round((10.0 - score) * dependence * 10.0) / 10.0 AS exposure,
+           p.whatWeUseItFor AS usedFor,
+           CASE WHEN coalesce(p.alternative, '') = '' THEN 'none recorded' ELSE p.alternative END AS alternative
+    ORDER BY exposure DESC, scorecard ASC
+    LIMIT $limit
+
+- name: FailingChecks
+  description: Every check a tracked project is failing, worst first, with Scorecard's own reason and what the check actually tells you. Excludes checks scored -1, which were not evaluated rather than failed.
+  params:
+    limit:
+      type: int
+      default: 50
+      description: "Maximum failing checks to return."
+    below:
+      type: int
+      default: 5
+      description: "Treat a check as failing below this score, 0-10."
+  cypher: |
+    MATCH (p:CriticalProject)-[r:HAS_CHECK]->(c:ScorecardCheck)
+    WHERE toInteger(r.score) >= 0 AND toInteger(r.score) < $below
+    OPTIONAL MATCH (m:CheckMeaning {name: c.name})
+    RETURN p.name AS project,
+           p.criticality AS weDependOn,
+           c.name AS check,
+           toInteger(r.score) AS score,
+           coalesce(m.weight, 1) AS matters,
+           coalesce(m.tells, '') AS whatItMeans,
+           r.reason AS scorecardSays
+    ORDER BY matters DESC, score ASC, project ASC
+    LIMIT $limit
+
+- name: SinglePointsOfFailure
+  description: The projects that would hurt most and are looked after least — critical dependencies failing a check this realm weights as "how supply chains actually get compromised". If this returns nothing, say so plainly; it is the answer you want.
+  params:
+    limit:
+      type: int
+      default: 25
+      description: "Maximum findings."
+  cypher: |
+    MATCH (p:CriticalProject)-[r:HAS_CHECK]->(c:ScorecardCheck)
+    MATCH (m:CheckMeaning {name: c.name})
+    WHERE toInteger(m.weight) = 3
+      AND toInteger(r.score) >= 0 AND toInteger(r.score) < 5
+      AND toLower(coalesce(p.criticality, '')) IN ['critical', 'important']
+    RETURN p.name AS project,
+           p.criticality AS weDependOn,
+           p.whatWeUseItFor AS usedFor,
+           c.name AS check,
+           toInteger(r.score) AS score,
+           m.tells AS whyItMatters,
+           r.reason AS scorecardSays,
+           CASE WHEN coalesce(p.alternative, '') = '' THEN 'no alternative recorded' ELSE p.alternative END AS alternative
+    ORDER BY score ASC, weDependOn ASC
+    LIMIT $limit
+
+- name: CheckMatrix
+  description: Every tracked project against every check it was scored on — the whole grid, for reading down a column to see which weakness is systemic across your dependencies rather than particular to one.
+  params:
+    limit:
+      type: int
+      default: 400
+      description: "Maximum cells to return."
+  cypher: |
+    MATCH (p:CriticalProject)-[r:HAS_CHECK]->(c:ScorecardCheck)
+    WHERE toInteger(r.score) >= 0
+    RETURN p.name AS project, c.name AS check, toInteger(r.score) AS score
+    ORDER BY project ASC, check ASC
+    LIMIT $limit
+
+- name: SystemicWeakness
+  description: Which checks your dependencies fail COLLECTIVELY — a weakness shared by most of what you ship is a fact about your ecosystem and your selection habits, not about any one project.
+  params:
+    limit:
+      type: int
+      default: 20
+      description: "How many checks to return, most widely failed first."
+  cypher: |
+    MATCH (p:CriticalProject)-[r:HAS_CHECK]->(c:ScorecardCheck)
+    WHERE toInteger(r.score) >= 0
+    OPTIONAL MATCH (m:CheckMeaning {name: c.name})
+    WITH c.name AS check,
+         coalesce(m.weight, 1) AS matters,
+         coalesce(m.tells, '') AS whatItMeans,
+         count(p) AS scoredProjects,
+         count(CASE WHEN toInteger(r.score) < 5 THEN 1 END) AS failing,
+         round(avg(toFloat(r.score)) * 10.0) / 10.0 AS meanScore
+    RETURN check, matters, failing, scoredProjects,
+           round(100.0 * failing / scoredProjects) AS failingPercent,
+           meanScore, whatItMeans
+    ORDER BY matters DESC, failingPercent DESC
+    LIMIT $limit
+
+- name: NotEvaluated
+  description: Checks that could NOT be evaluated for a project, scored -1 by Scorecard. Not failures — gaps in what can be said, listed so a clean-looking row is not mistaken for a fully-assessed one.
+  params:
+    limit:
+      type: int
+      default: 50
+      description: "Maximum rows."
+  cypher: |
+    MATCH (p:CriticalProject)-[r:HAS_CHECK]->(c:ScorecardCheck)
+    WHERE toInteger(r.score) < 0
+    RETURN p.name AS project, c.name AS check,
+           'not evaluated — this is a gap in the assessment, not a failure' AS meaning,
+           r.reason AS scorecardSays
+    ORDER BY project ASC, check ASC
+    LIMIT $limit
+
+- name: HealthBriefing
+  description: The paragraph to take upstairs. Reads the weakest checks on the projects you depend on most and says what a supply-chain problem would most likely look like for you, and what to do about it. Costs a model call; the other views are the evidence under it.
+  params:
+    limit:
+      type: int
+      default: 25
+      description: "How many findings to feed the assessment."
+  cypher: |
+    MATCH (p:CriticalProject)-[r:HAS_CHECK]->(c:ScorecardCheck)
+    MATCH (m:CheckMeaning {name: c.name})
+    WHERE toInteger(r.score) >= 0 AND toInteger(r.score) < 6 AND toInteger(m.weight) >= 2
+    WITH p, c, m, r ORDER BY toInteger(m.weight) DESC, toInteger(r.score) ASC LIMIT $limit
+    WITH collect(p.name + ' (' + coalesce(p.criticality, 'unrated') + ' dependency, used for ' +
+         coalesce(p.whatWeUseItFor, 'unrecorded') + '; alternative: ' +
+         CASE WHEN coalesce(p.alternative, '') = '' THEN 'none recorded' ELSE p.alternative END +
+         ') scores ' + toString(toInteger(r.score)) + '/10 on ' + c.name + ' — ' + m.tells) AS facts
+    UNWIND facts AS fact
+    RETURN synthesize(fact,
+      'You are advising an engineering leader on the open-source projects their product depends on. Using ONLY these findings, say in under 160 words: which project is the biggest single risk and why, what a supply-chain incident would most plausibly look like given these specific weaknesses, and the one change worth making this quarter. Weigh how much they depend on a project as heavily as its score — a badly-run project they barely use is not the story. Name projects and checks. Never mention a project or check that is not listed. Be direct; no preamble, and do not recommend buying anything.'
+    ) AS briefing

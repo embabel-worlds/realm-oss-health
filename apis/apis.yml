@@ -1,0 +1,10 @@
+# One source, no credential. deps.dev publishes Scorecard results for every
+# project it indexes, so the realm works the moment it is installed.
+- url: deps-dev.json
+  name: deps_dev
+  type: openapi
+  auth: none
+  headers:
+    User-Agent: "embabel-realm-oss-health/0.1 (https://embabel.com)"
+  operation-ids:
+    - projectHealth

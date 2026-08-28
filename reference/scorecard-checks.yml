@@ -1,0 +1,42 @@
+# What each OpenSSF Scorecard check tells you, and how much this realm weights it for a project
+# you SHIP rather than merely star. Seeded as reference data so the weighting is a file anyone can
+# argue with, not a judgement buried in a query.
+#
+# `weight` 3 means this is how supply chains actually get compromised; 2 is worth fixing; 1 is
+# hygiene. A lender, a procurement team and a platform team would each weight these differently,
+# and each can edit this file without touching a view.
+
+- type: CheckMeaning
+  data: { name: "Maintained", tells: "Whether anyone is still working on this. An unmaintained project will not ship a fix when the next vulnerability lands, whatever its other scores say.", weight: 3 }
+- type: CheckMeaning
+  data: { name: "Code-Review", tells: "Whether changes are reviewed before they merge. A low score means one person can put anything into your dependency — which is how the xz-utils backdoor got in.", weight: 3 }
+- type: CheckMeaning
+  data: { name: "Vulnerabilities", tells: "Open, known vulnerabilities in the project itself right now.", weight: 3 }
+- type: CheckMeaning
+  data: { name: "Dangerous-Workflow", tells: "Whether CI workflows have patterns that let an outsider run code with the project's own permissions. A failure here is a live path into releases.", weight: 3 }
+- type: CheckMeaning
+  data: { name: "Signed-Releases", tells: "Whether releases are cryptographically signed, so you can tell what you downloaded is what they published.", weight: 2 }
+- type: CheckMeaning
+  data: { name: "Branch-Protection", tells: "Whether the default branch can be force-pushed or bypassed. Weak protection undermines every review the project does do.", weight: 2 }
+- type: CheckMeaning
+  data: { name: "Security-Policy", tells: "Whether there is a published way to report a vulnerability privately. Without one, findings arrive as public issues.", weight: 2 }
+- type: CheckMeaning
+  data: { name: "Token-Permissions", tells: "Whether CI tokens follow least privilege. Over-broad tokens turn a small CI compromise into a release compromise.", weight: 2 }
+- type: CheckMeaning
+  data: { name: "Pinned-Dependencies", tells: "Whether the project pins what IT depends on. Unpinned dependencies mean its build can change under it — and so can yours.", weight: 2 }
+- type: CheckMeaning
+  data: { name: "Dependency-Update-Tool", tells: "Whether updates are automated. Absent, the project's own dependencies drift and age.", weight: 1 }
+- type: CheckMeaning
+  data: { name: "Binary-Artifacts", tells: "Whether binaries are committed to the repository. Committed binaries cannot be reviewed.", weight: 2 }
+- type: CheckMeaning
+  data: { name: "Fuzzing", tells: "Whether the project fuzzes itself. Its absence is common and not alarming on its own.", weight: 1 }
+- type: CheckMeaning
+  data: { name: "SAST", tells: "Whether static analysis runs in CI.", weight: 1 }
+- type: CheckMeaning
+  data: { name: "CI-Tests", tells: "Whether tests run on changes before merge.", weight: 1 }
+- type: CheckMeaning
+  data: { name: "License", tells: "Whether a licence is published and detectable.", weight: 1 }
+- type: CheckMeaning
+  data: { name: "Packaging", tells: "Whether the project publishes packages from CI. Often not applicable, and scored -1 when so.", weight: 1 }
+- type: CheckMeaning
+  data: { name: "Contributors", tells: "Whether contributors come from several organisations. A single-organisation project carries that organisation's risk.", weight: 1 }

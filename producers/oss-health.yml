@@ -1,0 +1,56 @@
+# TWO producers over ONE upstream operation, projected at different depths. The
+# call is the same and its result is cached once, so asking for the headline and
+# then the detail costs one fetch, not two — but a query that only ranks
+# projects never materialises fourteen check rows per project to do it.
+
+# The headline. `records: "$"` — the whole response is one record.
+- name: projectHealth
+  kind: remote
+  operation: projectHealth
+  records: "$"
+  keyArgs: [projectKey]
+  # `keySplit` defaults to "/" — path-param mode splits a key like `owner/repo` into one part per
+  # declared keyArg. This key IS a path (`github.com/apache/logging-log4j2`) and belongs to ONE
+  # parameter, so the default silently handed deps.dev just `github.com` and the rest was lost. A
+  # separator that cannot occur in a project key keeps the whole thing together.
+  keySplit: "|"
+  echoKeyAs: key
+  maxKeysPerCall: 1
+  batchSafe: false
+  project:
+    overallScore: scorecard.overallScore
+    scorecardDate: scorecard.date
+    stars: starsCount
+    forks: forksCount
+    openIssues: openIssuesCount
+    license: license
+    description: description
+  # Scorecard is recomputed on the order of weekly, and a project's governance
+  # does not change hourly. `negativeTtlSeconds` matters because a project
+  # deps.dev has never indexed 404s, and without it every query re-asks about
+  # every unindexed project forever.
+  cache: { kind: ttl, seconds: 86400, negativeTtlSeconds: 86400 }
+
+# The detail: one record per check, from the same response.
+#
+# Scorecard check NAMES are global — fourteen of them, the same for every project —
+# so the node is the check and the per-project score belongs on the EDGE. That is
+# what `edgeProject` is for: `score` and `reason` land on the relationship, and a
+# query reads them from there. Projecting them onto the node instead would collapse
+# forty projects' `Maintained` scores into one, and report whichever arrived last
+# for all of them: a full table of plausible, uniform, wrong numbers.
+- name: scorecardChecks
+  kind: remote
+  operation: projectHealth
+  records: "$.scorecard.checks[*]"
+  keyArgs: [projectKey]
+  keySplit: "|"   # see projectHealth above — the key is itself a path
+  echoKeyAs: key
+  maxKeysPerCall: 1
+  batchSafe: false
+  project:
+    name: name
+  edgeProject:
+    score: score
+    reason: reason
+  cache: { kind: ttl, seconds: 86400, negativeTtlSeconds: 86400 }

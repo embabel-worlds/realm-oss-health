@@ -1,0 +1,75 @@
+# One STORED anchor, two VIRTUAL types off a SINGLE fetch, and a catalog.
+#
+#   CriticalProject ──HAS_HEALTH──▶ ProjectHealth    one row: the headline
+#                   ──HAS_CHECK───▶ ScorecardCheck   fourteen rows: the detail
+#   ScorecardCheck.name ─────────── CheckMeaning     why the check matters
+#
+# The two virtual types come from the SAME upstream call, projected at
+# different depths — the headline for ranking, the checks for diagnosis. A
+# query that only wants "which project is weakest" never materialises fourteen
+# rows per project to find out.
+
+- name: CriticalProject
+  description: "An open-source project this organisation depends on, and how much it would hurt to lose it. The one thing seeded by hand. `projectKey` is host-qualified — `github.com/owner/repo` — because that is what deps.dev indexes on. `criticality` is your judgement of the dependency, and it is what makes the ranking useful: a badly-run project you barely touch is a curiosity, and a badly-run project in your hot path is a plan."
+  properties:
+    projectKey:
+      description: "Host-qualified repository path, e.g. `github.com/apache/logging-log4j2`. Identity, and the fetch key."
+      metadata:
+        identity: "true"
+    name: "What you call it."
+    whatWeUseItFor: "Where it sits in your system, in plain words."
+    criticality: "`critical`, `important` or `incidental` — how much it would hurt if this project went unmaintained or hostile."
+    alternative: "What you would move to, if you had to. Blank is itself an answer, and usually the alarming one."
+
+- name: ProjectHealth
+  description: "A project's headline health: its OpenSSF Scorecard overall score out of ten, plus the repository facts that give it context. Reached from CriticalProject via HAS_HEALTH. `overallScore` is a weighted roll-up of the individual checks — good for ranking, useless for diagnosis, which is what ScorecardCheck is for. `scorecardDate` matters: Scorecard is recomputed periodically, so a stale date means the score describes a repository that may have moved on. A project deps.dev has never indexed produces nothing here and a warning, which is NOT the same as a project that scored badly."
+  virtualJoins:
+    - anchorLabel: CriticalProject
+      relationship: HAS_HEALTH
+      keyField: projectKey
+      recordKeyField: key
+      producer: projectHealth
+      maxAnchors: 100
+      description: "The headline score and repository facts — for 'which of our dependencies is worst run'."
+  properties:
+    key:
+      description: "The project key this was fetched for. Identity."
+      metadata:
+        identity: "true"
+    overallScore: "OpenSSF Scorecard overall, 0-10. Below 5 is poor; above 8 is unusual and good."
+    scorecardDate: "When the scorecard was computed. A stale date describes a repository that may have changed."
+    stars: "GitHub stars. Popularity, which is NOT maintenance — the xz-utils backdoor landed in a project everybody used."
+    forks: "Fork count."
+    openIssues: "Open issue count. High is ambiguous: a busy project and a neglected one look alike here."
+    license: "SPDX licence identifier."
+    description: "The project's own one-line description."
+
+- name: ScorecardCheck
+  description: "One of the fourteen OpenSSF Scorecard checks for a project, with its score and the reason given. Reached from CriticalProject via HAS_CHECK. THE TRAP: a score of -1 does NOT mean zero — it means the check could not be evaluated or does not apply, and averaging it in drags a well-run project down. Every view here excludes -1 and reports how many it excluded. `Maintained`, `Code-Review` and `Security-Policy` are the three that most often separate a project you can rely on from one you cannot."
+  virtualJoins:
+    - anchorLabel: CriticalProject
+      relationship: HAS_CHECK
+      keyField: projectKey
+      recordKeyField: key
+      producer: scorecardChecks
+      maxAnchors: 100
+      maxFanoutTotal: 2000
+      description: "The individual checks — for 'why is this project scored badly' and 'what would we fix first'."
+  properties:
+    name:
+      description: "Check name, e.g. `Maintained`, `Code-Review`, `Signed-Releases`. Identity — Scorecard names are global, so one check reached from forty projects is ONE node with forty edges, and the per-project SCORE rides on the EDGE rather than the node. Read the score from the relationship, never from the node."
+      metadata:
+        identity: "true"
+    key: "The project key this check was fetched for — the join link."
+    score: "0-10, or -1 meaning NOT EVALUATED. Never treat -1 as a failure."
+    reason: "Scorecard's own explanation of the score. Usually the most useful field on the row."
+
+- name: CheckMeaning
+  description: "What one Scorecard check actually tells you, and how much this realm weights it for a project you SHIP rather than merely star. Seeded as reference data. The weighting is a judgement — it is written down in a file so it can be argued with, because a check that matters enormously for a library in your hot path may not matter at all for a build-time tool."
+  properties:
+    name:
+      description: "Check name as Scorecard writes it. Identity."
+      metadata:
+        identity: "true"
+    tells: "What a low score on this check means, in plain words."
+    weight: "3 this is how supply chains get compromised, 2 worth fixing, 1 hygiene. This realm's judgement."

@@ -1,0 +1,37 @@
+name: realm-oss-health
+description: |
+  How maintained are the open-source projects you bet the company on?
+
+  Every organisation ships code it did not write and cannot fix. After
+  Log4Shell and the xz-utils backdoor the question stopped being academic:
+  which of the projects underneath our product have one maintainer, no
+  security policy, unsigned releases, and nobody reviewing the commits?
+
+  The OpenSSF Scorecard answers exactly that — fourteen automated checks
+  per project, from "is this actively maintained" to "does anyone review
+  the code before it merges" — and almost nobody runs it across the
+  projects they actually depend on. Name the ones that would hurt, and
+  this realm scores them, ranks by the gap between how much you depend on
+  a project and how well it is run, and says which single fix buys the
+  most.
+
+  One source: Google's deps.dev, which publishes Scorecard results for
+  every indexed project. Open, keyless, no account. It pairs with
+  realm-exposure, which asks whether a dependency is vulnerable TODAY;
+  this one asks whether it is likely to be vulnerable next year.
+version: 0.1.0
+author: rod
+tags:
+  - open-source
+  - supply-chain
+  - scorecard
+  - governance
+  - openapi
+  - apps
+  - handlers
+exports:
+  - deps_dev
+  - CriticalProject
+  - ProjectHealth
+  - ScorecardCheck
+  - CheckMeaning

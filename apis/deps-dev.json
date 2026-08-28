@@ -1,0 +1,24 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "deps.dev projects",
+    "version": "1.0.0",
+    "description": "Google's Open Source Insights. Free, keyless, no account. `projectHealth` returns a repository's headline facts and its full OpenSSF Scorecard — an overall score out of ten plus fourteen named checks. The project key is a host-qualified path (`github.com/apache/logging-log4j2`) and must be percent-encoded, slashes included, because it is a single path segment."
+  },
+  "servers": [{ "url": "https://api.deps.dev" }],
+  "paths": {
+    "/v3/projects/{projectKey}": {
+      "get": {
+        "operationId": "projectHealth",
+        "summary": "A project's headline facts and its OpenSSF Scorecard",
+        "description": "Returns `{projectKey, starsCount, forksCount, openIssuesCount, license, description, ossFuzz, scorecard: {overallScore, date, repository, checks: [{name, score, reason, documentation}]}}`.\n\nTwo things about the scores. `overallScore` is 0-10. A CHECK score of -1 does NOT mean zero — it means the check could not run or does not apply, and averaging it in silently drags a good project down; every view here excludes it and says how many were excluded. A project deps.dev has never indexed returns 404 rather than an empty scorecard.",
+        "parameters": [
+          { "name": "projectKey", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Host-qualified repository path, e.g. `github.com/apache/logging-log4j2`. Percent-encoded — the slashes too." }
+        ],
+        "responses": {
+          "200": { "description": "Project facts and scorecard.", "content": { "application/json": { "schema": { "type": "object" } } } }
+        }
+      }
+    }
+  }
+}
