@@ -25,6 +25,13 @@ by how much a problem there would actually cost you.
 Two scheduled agents run without being asked: `healthSweep` and `healthCoverage`, both Monday
 mornings.
 
+## Seeding a project
+
+`CriticalProject` rows carry BOTH `projectKey` (readable, `github.com/owner/repo`) and
+`projectKeyEncoded` (the same string percent-encoded — the FETCH key). Without the encoded field
+deps.dev is never called and the project silently never scores. The Bill of Health app writes
+both; when seeding through chat, encode it yourself.
+
 ## Three things to get right
 
 **A check score of -1 is NOT zero.** It means the check could not be evaluated or does not apply —
