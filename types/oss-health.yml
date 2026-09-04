@@ -16,8 +16,6 @@
       description: "Host-qualified repository path, e.g. `github.com/apache/logging-log4j2`. Identity, and the fetch key."
       metadata:
         identity: "true"
-    projectKeyEncoded:
-      description: "The SAME key percent-encoded into one URL path segment (`github.com%2Fowner%2Frepo`) — what deps.dev actually accepts, and therefore the fetch key the joins use. A key with raw slashes is refused at the request boundary (a path segment must be one segment), so this field existing is what makes the fetch happen at all. The app writes it automatically; write it as encodeURIComponent(projectKey) when seeding by hand."
     name: "What you call it."
     whatWeUseItFor: "Where it sits in your system, in plain words."
     criticality: "`critical`, `important` or `incidental` — how much it would hurt if this project went unmaintained or hostile."
@@ -28,7 +26,7 @@
   virtualJoins:
     - anchorLabel: CriticalProject
       relationship: HAS_HEALTH
-      keyField: projectKeyEncoded
+      keyField: projectKey
       recordKeyField: key
       producer: projectHealth
       maxAnchors: 100
@@ -51,7 +49,7 @@
   virtualJoins:
     - anchorLabel: CriticalProject
       relationship: HAS_CHECK
-      keyField: projectKeyEncoded
+      keyField: projectKey
       recordKeyField: key
       producer: scorecardChecks
       maxAnchors: 100

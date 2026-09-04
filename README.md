@@ -63,7 +63,6 @@ things bite:
 
 ```javascript
 gateway.repository.createEntry({ type: "CriticalProject", data: {
-  // projectKeyEncoded is REQUIRED: deps.dev takes the key as ONE encoded path segment.
   projectKey: "github.com/FasterXML/jackson-databind",
   name: "Jackson databind",
   whatWeUseItFor: "JSON on every API boundary",
