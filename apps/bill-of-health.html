@@ -270,6 +270,7 @@
     if (tracked.some(function (t) { return t.key === key; })) { trackStatus('Already tracked.', true); return; }
     var data = {
       projectKey: key,
+      projectKeyEncoded: encodeURIComponent(key),
       name: document.getElementById('t-name').value.trim() || key.split('/').pop(),
       criticality: document.getElementById('t-crit').value,
       whatWeUseItFor: document.getElementById('t-uses').value.trim(),
