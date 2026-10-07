@@ -21,6 +21,7 @@ description: |
   this one asks whether it is likely to be vulnerable next year.
 version: 0.1.0
 author: rod
+category: security
 tags:
   - open-source
   - supply-chain
