@@ -1,7 +1,7 @@
-# TWO producers over ONE upstream operation, projected at different depths. The
-# call is the same and its result is cached once, so asking for the headline and
-# then the detail costs one fetch, not two — but a query that only ranks
-# projects never materialises fourteen check rows per project to do it.
+# TWO producers over ONE upstream operation, projected at different depths, so a query
+# that only ranks projects never materialises fourteen check rows per project to do it.
+# Each producer caches its own result: asking for the headline and then the detail costs
+# one deps.dev call per project for each, the first time in a day (measured).
 
 # The headline. `records: "$"` — the whole response is one record.
 - name: projectHealth
@@ -17,6 +17,9 @@
   echoKeyAs: key
   maxKeysPerCall: 1
   batchSafe: false
+  # deps.dev's GetProject takes the project key in the path and nothing else: no filter, no
+  # field selection. Every WHERE on the result is the graph's, which is cheap here — one record.
+  pushdown: []
   project:
     overallScore: scorecard.overallScore
     scorecardDate: scorecard.date
@@ -48,6 +51,8 @@
   echoKeyAs: key
   maxKeysPerCall: 1
   batchSafe: false
+  # The same endpoint as projectHealth, cached separately: the check list comes whole, about fourteen rows.
+  pushdown: []
   project:
     name: name
   edgeProject:
