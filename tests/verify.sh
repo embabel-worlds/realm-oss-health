@@ -15,7 +15,7 @@
 #
 # The last line is exactly `ALL CHECKS PASS` when everything holds; any failure exits 1.
 exec python3 - "$@" <<'PY'
-import base64, json, os, sys, urllib.parse, urllib.request
+import base64, json, os, sys, time, urllib.parse, urllib.request
 
 APPLIANCE = os.environ.get("APPLIANCE", "http://127.0.0.1:11043").rstrip("/")
 AUTH = os.environ.get("AUTH") or os.environ.get("EMBABEL_AUTH") or sys.exit("set AUTH=user:pass")
@@ -81,9 +81,13 @@ def deps_dev(key):
 print("== seed: the tracked projects ==")
 tracked = cypher("MATCH (p:CriticalProject) RETURN p.projectKey AS key, p.name AS name")
 if not tracked:
-    code_mode("await gateway.repository.createEntries(%s); return 'seeded';"
-              % json.dumps([{"type": "CriticalProject", "data": s} for s in SEED]))
-    tracked = cypher("MATCH (p:CriticalProject) RETURN p.projectKey AS key, p.name AS name")
+    res = code_mode("return await gateway.repository.createEntries(%s);"
+                    % json.dumps([{"type": "CriticalProject", "data": s} for s in SEED]))
+    print("  code door answered: " + json.dumps(res)[:600])
+    for _ in range(10):  # a write is visible to a read within moments, not necessarily at once
+        tracked = cypher("MATCH (p:CriticalProject) RETURN p.projectKey AS key, p.name AS name")
+        if tracked: break
+        time.sleep(3)
     print("  seeded %d projects" % len(tracked))
 check("the world tracks at least one CriticalProject", len(tracked) > 0, "%d" % len(tracked))
 names = {t["key"]: t["name"] for t in tracked}
