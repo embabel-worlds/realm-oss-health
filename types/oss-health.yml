@@ -74,7 +74,7 @@
       producer: scorecardChecks
       maxAnchors: 100
       maxFanoutTotal: 2000
-      description: "This project's individual Scorecard checks (about fourteen), the score and reason ON THE EDGE: MATCH (p)-[r:HAS_CHECK]->(c) and read r.score, r.reason. Same cached deps.dev call as HAS_HEALTH. Exclude r.score = -1 (not evaluated). For 'why is this project scored badly' and 'what would we fix first'."
+      description: "This project's individual Scorecard checks (about fourteen), the score and reason ON THE EDGE: MATCH (p)-[r:HAS_CHECK]->(c) and read r.score, r.reason. One deps.dev call per project, cached a day on its own (not shared with HAS_HEALTH's). Exclude r.score = -1 (not evaluated). For 'why is this project scored badly' and 'what would we fix first'."
   properties:
     name:
       description: "Check name, e.g. `Maintained`, `Code-Review`, `Signed-Releases`. Identity — Scorecard names are global, so one check reached from forty projects is ONE node with forty edges, and the per-project SCORE rides on the EDGE rather than the node. Read the score from the relationship, never from the node."

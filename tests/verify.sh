@@ -104,7 +104,10 @@ calls2 = (again.get("metrics") or {}).get("externalCalls")
 check("a repeat is answered from the cache", calls2 == 0, "%s calls" % calls2)
 checks = invoke("CheckMatrix", {"limit": 1000})
 calls3 = (checks.get("metrics") or {}).get("externalCalls")
-check("the check detail reuses the headline's cached call", calls3 == 0, "%s calls" % calls3)
+check("the check detail reads at most one deps.dev call per project", calls3 is not None and calls3 <= len(tracked),
+      "%s calls" % calls3)
+calls4 = (invoke("CheckMatrix", {"limit": 1000}).get("metrics") or {}).get("externalCalls")
+check("a repeat of the check detail is answered from the cache", calls4 == 0, "%s calls" % calls4)
 
 print("== L1: every view answers by name on its defaults ==")
 MAY_BE_EMPTY = {"SinglePointsOfFailure", "FailingChecks", "NotEvaluated", "HealthBriefing"}

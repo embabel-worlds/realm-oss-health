@@ -1,7 +1,7 @@
-# TWO producers over ONE upstream operation, projected at different depths. The
-# call is the same and its result is cached once, so asking for the headline and
-# then the detail costs one fetch, not two — but a query that only ranks
-# projects never materialises fourteen check rows per project to do it.
+# TWO producers over ONE upstream operation, projected at different depths, so a query
+# that only ranks projects never materialises fourteen check rows per project to do it.
+# Each producer caches its own result: asking for the headline and then the detail costs
+# one deps.dev call per project for each, the first time in a day (measured).
 
 # The headline. `records: "$"` — the whole response is one record.
 - name: projectHealth
@@ -51,7 +51,7 @@
   echoKeyAs: key
   maxKeysPerCall: 1
   batchSafe: false
-  # Same call as projectHealth: the check list comes whole, about fourteen rows, filtered here.
+  # The same endpoint as projectHealth, cached separately: the check list comes whole, about fourteen rows.
   pushdown: []
   project:
     name: name
