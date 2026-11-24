@@ -22,7 +22,7 @@
 # Producer values arrive as STRINGS: arithmetic and ORDER BY go through toInteger()/toFloat().
 
 - name: WeakestLinks
-  description: "The projects you depend on, worst-run first — OpenSSF Scorecard overall against how much you said you depend on them. The view to open first. Projects deps.dev has not scored are EXCLUDED rather than ranked worst; healthCoverage reports those."
+  description: "Your dependencies ranked worst-run first by OpenSSF Scorecard. Overall score against how much you said you depend on them. The view to open first. Projects deps.dev has not scored are EXCLUDED rather than ranked worst; healthCoverage reports those."
   params:
     limit:
       type: int
@@ -47,7 +47,7 @@
     LIMIT $limit
 
 - name: ExposureRanked
-  description: "Weakest project weighted by how much you depend on it — a badly-run project you barely touch is a curiosity, and one in your hot path is a plan. The ordering to work, rather than raw score. Unscored projects are excluded, not ranked worst."
+  description: "Dependencies ranked by exposure: weak score times how much you depend on it. A badly-run project you barely touch is a curiosity, and one in your hot path is a plan. The ordering to work, rather than raw score. Unscored projects are excluded, not ranked worst."
   params:
     limit:
       type: int
@@ -70,7 +70,7 @@
     LIMIT $limit
 
 - name: FailingChecks
-  description: Every check a tracked project is failing, worst first, with Scorecard's own reason and what the check actually tells you. Excludes checks scored -1, which were not evaluated rather than failed.
+  description: Every failing Scorecard check across your projects, most important first. With Scorecard's own reason and what the check actually tells you. Excludes checks scored -1, which were not evaluated rather than failed.
   params:
     limit:
       type: int
@@ -95,7 +95,7 @@
     LIMIT $limit
 
 - name: SinglePointsOfFailure
-  description: The projects that would hurt most and are looked after least — critical dependencies failing a check this realm weights as "how supply chains actually get compromised". If this returns nothing, say so plainly; it is the answer you want.
+  description: Critical or important dependencies failing a check that matters most (weight 3). That is, the projects that would hurt most and are looked after least, failing a check this realm weights as "how supply chains actually get compromised" with a score below 5. Incidental projects, weight 1-2 checks and checks scored -1 are left out; up to `limit` rows. If this returns nothing, say so plainly; it is the answer you want.
   params:
     limit:
       type: int
@@ -119,7 +119,7 @@
     LIMIT $limit
 
 - name: CheckMatrix
-  description: Every tracked project against every check it was scored on — the whole grid, for reading down a column to see which weakness is systemic across your dependencies rather than particular to one.
+  description: Every project against every check it was scored on, as a grid. The whole grid, excluding -1 (not evaluated), up to `limit` cells, for reading down a column to see which weakness is systemic across your dependencies rather than particular to one.
   params:
     limit:
       type: int
@@ -133,7 +133,7 @@
     LIMIT $limit
 
 - name: SystemicWeakness
-  description: Which checks your dependencies fail COLLECTIVELY — a weakness shared by most of what you ship is a fact about your ecosystem and your selection habits, not about any one project.
+  description: Which Scorecard checks most of your dependencies fail together. A weakness shared by most of what you ship is a fact about your ecosystem and your selection habits, not about any one project.
   params:
     limit:
       type: int
@@ -172,7 +172,7 @@
     LIMIT $limit
 
 - name: HealthBriefing
-  description: The paragraph to take upstairs. Reads the weakest checks on the projects you depend on most and says what a supply-chain problem would most likely look like for you, and what to do about it. Costs a model call; the other views are the evidence under it.
+  description: A short written briefing on your biggest open-source supply-chain risk. Reads the weakest checks on the projects you depend on most and says what a supply-chain problem would most likely look like for you, and what to do about it. Uses only the `limit` worst findings (score below 6 on a check weighted 2 or 3); projects with no such finding are not mentioned. Costs a model call; the other views are the evidence under it.
   params:
     limit:
       type: int

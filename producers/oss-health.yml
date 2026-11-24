@@ -17,6 +17,9 @@
   echoKeyAs: key
   maxKeysPerCall: 1
   batchSafe: false
+  # deps.dev's GetProject takes the project key in the path and nothing else: no filter, no
+  # field selection. Every WHERE on the result is the graph's, which is cheap here — one record.
+  pushdown: []
   project:
     overallScore: scorecard.overallScore
     scorecardDate: scorecard.date
@@ -48,6 +51,8 @@
   echoKeyAs: key
   maxKeysPerCall: 1
   batchSafe: false
+  # Same call as projectHealth: the check list comes whole, about fourteen rows, filtered here.
+  pushdown: []
   project:
     name: name
   edgeProject:
