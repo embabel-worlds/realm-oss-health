@@ -81,9 +81,11 @@ def deps_dev(key):
 print("== seed: the tracked projects ==")
 tracked = cypher("MATCH (p:CriticalProject) RETURN p.projectKey AS key, p.name AS name")
 if not tracked:
-    res = code_mode("return await gateway.repository.createEntries(%s);"
-                    % json.dumps([{"type": "CriticalProject", "data": s} for s in SEED]))
-    print("  code door answered: " + json.dumps(res)[:600])
+    # One createEntry({type, data}) per project: the documented write.
+    res = code_mode("const out = []; for (const data of %s) { out.push(await gateway.repository.createEntry({ type: 'CriticalProject', data })); } return out;"
+                    % json.dumps(SEED))
+    text = " ".join(c.get("text", "") for c in ((res.get("result") or {}).get("content") or []))
+    print("  code door answered: " + text.split("--- END ORIENTATION ---")[-1].strip()[-800:])
     for _ in range(10):  # a write is visible to a read within moments, not necessarily at once
         tracked = cypher("MATCH (p:CriticalProject) RETURN p.projectKey AS key, p.name AS name")
         if tracked: break
