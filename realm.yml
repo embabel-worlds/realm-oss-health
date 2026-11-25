@@ -19,7 +19,7 @@ description: |
   every indexed project. Open, keyless, no account. It pairs with
   realm-exposure, which asks whether a dependency is vulnerable TODAY;
   this one asks whether it is likely to be vulnerable next year.
-version: 0.1.1
+version: 0.1.2
 author: rod
 category: security
 tags:
